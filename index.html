@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cash Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">$</div>
+        <div>
+          <h1>Cash Dashboard</h1>
+          <p class="sub">Cash collected — todas tus empresas en un sitio</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnEdit" class="btn ghost">✎ Editar datos</button>
+      </div>
+    </header>
+
+    <!-- filtros de empresa -->
+    <div class="company-tabs" id="companyTabs">
+      <button data-co="all" class="co-tab active">Todas</button>
+      <button data-co="estonia" class="co-tab">🇪🇪 Estonia</button>
+      <button data-co="usa" class="co-tab">🇺🇸 EE. UU.</button>
+      <button data-co="paraguay" class="co-tab">🇵🇾 Paraguay</button>
+    </div>
+
+    <!-- filtros de periodo -->
+    <div class="filters">
+      <div class="period-pills" id="periodPills">
+        <button data-p="today" class="pill">Hoy</button>
+        <button data-p="yesterday" class="pill">Ayer</button>
+        <button data-p="week" class="pill">Esta semana</button>
+        <button data-p="month" class="pill">Este mes</button>
+        <button data-p="30d" class="pill active">Últimos 30 días</button>
+      </div>
+      <div class="range">
+        <label>Desde <input type="date" id="from" /></label>
+        <label>Hasta <input type="date" id="to" /></label>
+        <button id="applyRange" class="btn small">Aplicar</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <section class="kpis">
+      <div class="card hero">
+        <div class="kpi-label">Cash collected <span id="rangeLabel" class="chip"></span></div>
+        <div class="kpi-value" id="heroValue">$0</div>
+        <div class="kpi-delta" id="heroDelta"></div>
+      </div>
+      <div class="card mini" data-co="estonia"><div class="mini-top"><span class="dot e"></span>Estonia</div><div class="mini-val" id="valEstonia">$0</div></div>
+      <div class="card mini" data-co="usa"><div class="mini-top"><span class="dot u"></span>EE. UU.</div><div class="mini-val" id="valUsa">$0</div></div>
+      <div class="card mini" data-co="paraguay"><div class="mini-top"><span class="dot p"></span>Paraguay</div><div class="mini-val" id="valParaguay">$0</div></div>
+    </section>
+
+    <!-- gráfica -->
+    <section class="card chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">Evolución</div>
+          <div class="chart-sub" id="chartSub">—</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart" preserveAspectRatio="none"></svg>
+        <div id="tooltip" class="tooltip hidden"></div>
+      </div>
+      <div class="x-axis" id="xAxis"></div>
+    </section>
+
+    <p class="footnote">Los números son editables y se guardan en este navegador. Cuando conectes las APIs de los bancos, sustituirán estos datos de ejemplo.</p>
+  </div>
+
+  <!-- panel de edición -->
+  <div class="drawer-overlay hidden" id="overlay"></div>
+  <aside class="drawer hidden" id="drawer">
+    <div class="drawer-head">
+      <h2>Editar datos</h2>
+      <button id="closeDrawer" class="btn ghost small">✕</button>
+    </div>
+    <p class="drawer-sub">Importes en USD por día y empresa. Se guardan automáticamente.</p>
+    <div class="table-wrap">
+      <table id="dataTable">
+        <thead><tr><th>Fecha</th><th>🇪🇪 Estonia</th><th>🇺🇸 EE. UU.</th><th>🇵🇾 Paraguay</th><th></th></tr></thead>
+        <tbody id="dataBody"></tbody>
+      </table>
+    </div>
+    <div class="drawer-actions">
+      <button id="addRow" class="btn small">+ Añadir día</button>
+      <button id="resetData" class="btn ghost small">Restablecer ejemplo</button>
+    </div>
+  </aside>
+
+  <script src="app.js"></script>
+</body>
+</html>
