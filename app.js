@@ -1,5 +1,5 @@
 // ===== Cash Dashboard — iOS · cash collected por negocio y destino =====
-const KEY = 'cashdash.data.v2';
+const KEY = 'cashdash.data.v3';
 const YEAR = 2026;
 
 const NEGOCIOS = [
@@ -32,13 +32,15 @@ const fmtK = n => n>=1e6 ? '$'+(n/1e6).toFixed(n>=1e7?1:2)+'M'
                 : '$'+Math.round(n);
 
 // ---------- datos (seed + persistencia)
+// Reparto por destino de cobro: cripto ~9% del total; el resto que no es
+// LLC/EAS cae en OÜ (decisión de Jorge).
 const WEIGHTS = {
-  agencia:    { llc:0.60, cripto:0.25, ou:0.15 },
-  consultoria:{ ou:0.50, cripto:0.30, llc:0.20 },
-  bicicletas: { eas:0.80, cripto:0.20 },
+  agencia:    { llc:0.60, ou:0.31, cripto:0.09 },
+  consultoria:{ ou:0.71, llc:0.20, cripto:0.09 },
+  bicicletas: { eas:0.80, ou:0.11, cripto:0.09 },
 };
 const MONTHLY = { agencia:190000, consultoria:20000, bicicletas:150000 }; // USD/mes (media; ±10% random)
-const BIKES_FROM = 4; // mayo (0-index) — el negocio de productos arrancó a mitad de año
+const BIKES_FROM = 8; // septiembre (0-index) — el negocio de productos arrancó en sep
 
 function splitRandom(total,n){
   if(n<=1) return [total];
