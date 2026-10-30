@@ -1,5 +1,5 @@
 // ===== Cash Dashboard — iOS · cash collected por negocio y destino =====
-const KEY = 'cashdash.data.v4';
+const KEY = 'cashdash.data.v5';
 const YEAR = 2026;
 
 const NEGOCIOS = [
@@ -32,13 +32,17 @@ const fmtK = n => n>=1e6 ? '$'+(n/1e6).toFixed(n>=1e7?1:2)+'M'
                 : '$'+Math.round(n);
 
 // ---------- datos (seed + persistencia)
-// Reparto por destino de cobro: cripto ~9% del total; el resto que no es
-// LLC/EAS cae en OÜ (decisión de Jorge).
-const WEIGHTS = {
-  agencia:    { llc:0.60, ou:0.31, cripto:0.09 },
-  consultoria:{ ou:0.71, llc:0.20, cripto:0.09 },
-  bicicletas: { eas:0.80, ou:0.11, cripto:0.09 },
-};
+// Destino de cobro (dónde entra el cash):
+//  bicicletas → EAS · agencia → 50% OÜ / 50% LLC · consultoría → LLC
+//  La LLC abrió en julio; antes de julio ese dinero entraba por OÜ.
+const LLC_FROM = new Date(YEAR,6,1);
+function destinoFor(neg,d){
+  if(neg==='bicicletas') return 'eas';
+  const hasLLC = d>=LLC_FROM;
+  if(neg==='consultoria') return hasLLC ? 'llc' : 'ou';
+  if(neg==='agencia')     return hasLLC ? (Math.random()<0.5?'llc':'ou') : 'ou';
+  return 'ou';
+}
 // --- Agencia: cash = 40% del facturado; cobro semanal lun–mié (martes fuerte)
 const BILLED_AGENCIA = 200000;                   // facturado/mes
 const COLLECT_AGENCIA = 0.40;                    // % que entra como cash (el resto va a clientes)
@@ -53,30 +57,29 @@ const CONSULT_TICKET = 10000;
 const CONSULT_PLAN = { 3:2, 4:3, 5:3, 6:4, 7:3, 8:2, 9:3 }; // mes(0-index):nº mentorías
 
 function firstWeekday(from,dow){ const d=new Date(from); return addDays(d,(dow-d.getDay()+7)%7); }
-function pickDest(w){ let r=Math.random(),acc=0; for(const [k,v] of Object.entries(w)){ acc+=v; if(r<=acc) return k; } return Object.keys(w)[0]; }
 
 function seed(){
   const out=[]; let id=1;
   const today=new Date(); today.setHours(0,0,0,0);
   const y=YEAR, y0=new Date(y,0,1);
-  const add=(d,neg,amt,w)=>{ if(d<y0||d>today||amt<=0) return; out.push({id:id++,date:iso(d),negocio:neg,destino:pickDest(w),amount:Math.round(amt/10)*10}); };
+  const add=(d,neg,amt)=>{ if(d<y0||d>today||amt<=0) return; out.push({id:id++,date:iso(d),negocio:neg,destino:destinoFor(neg,d),amount:Math.round(amt/10)*10}); };
 
   // Agencia — semanal, anclado en martes (dow 2)
   const wkAgencia = BILLED_AGENCIA*COLLECT_AGENCIA*12/52;
   for(let d=firstWeekday(y0,2); d<=today; d=addDays(d,7)){
     const wk=wkAgencia*(0.9+Math.random()*0.2);
-    add(addDays(d,-1),'agencia',wk*DOW_AGENCIA[1],WEIGHTS.agencia); // lunes
-    add(d,            'agencia',wk*DOW_AGENCIA[2],WEIGHTS.agencia); // martes
-    add(addDays(d,1), 'agencia',wk*DOW_AGENCIA[3],WEIGHTS.agencia); // miércoles
+    add(addDays(d,-1),'agencia',wk*DOW_AGENCIA[1]); // lunes
+    add(d,            'agencia',wk*DOW_AGENCIA[2]); // martes
+    add(addDays(d,1), 'agencia',wk*DOW_AGENCIA[3]); // miércoles
   }
 
   // Bicicletas — semanal, anclado en jueves (dow 4), desde septiembre
   for(let d=firstWeekday(new Date(y,BIKES_FROM,1),4); d<=today; d=addDays(d,7)){
     const units=BIKE_UNITS[0]+Math.floor(Math.random()*(BIKE_UNITS[1]-BIKE_UNITS[0]+1));
     const wk=units*12/52*BIKE_PRICE;
-    add(addDays(d,-1),'bicicletas',wk*DOW_BIKES[3],WEIGHTS.bicicletas); // miércoles
-    add(d,            'bicicletas',wk*DOW_BIKES[4],WEIGHTS.bicicletas); // jueves
-    add(addDays(d,1), 'bicicletas',wk*DOW_BIKES[5],WEIGHTS.bicicletas); // viernes
+    add(addDays(d,-1),'bicicletas',wk*DOW_BIKES[3]); // miércoles
+    add(d,            'bicicletas',wk*DOW_BIKES[4]); // jueves
+    add(addDays(d,1), 'bicicletas',wk*DOW_BIKES[5]); // viernes
   }
 
   // Consultoría — mentorías de 10k en días sueltos (abr–oct)
@@ -87,7 +90,7 @@ function seed(){
       if(y===today.getFullYear()&&mi===today.getMonth()) maxD=today.getDate();
       let dt=new Date(y,mi,1+Math.floor(Math.random()*maxD));
       if(dt.getDay()===0) dt=addDays(dt,1); else if(dt.getDay()===6) dt=addDays(dt,2);
-      add(dt,'consultoria',CONSULT_TICKET,WEIGHTS.consultoria);
+      add(dt,'consultoria',CONSULT_TICKET);
     }
   }
 
@@ -181,16 +184,16 @@ function render(){
       `<div><span class="dot" style="background:${NEG_COLOR[n.key]}"></span>${n.label} <b>${fmtK(n.v)}</b> · ${Math.round(n.v/total*100)}%</div>`).join('');
   } else byNeg.classList.add('hidden');
 
-  // destino cards
-  document.getElementById('destGrid').innerHTML=DESTINOS.map(d=>{
-    const v=sum(set.filter(e=>e.destino===d.key));
+  // destino cards (solo las cuentas con cobros en el periodo)
+  const dcards=DESTINOS.map(d=>({d,v:sum(set.filter(e=>e.destino===d.key))})).filter(x=>x.v>0);
+  document.getElementById('destGrid').innerHTML=dcards.map(({d,v})=>{
     const pct= total>0 ? Math.round(v/total*100) : 0;
     return `<div class="card dest">
       <div class="dest-top"><span class="dot" style="background:${d.color}"></span>${d.label}
         <span class="dest-sub">· ${d.sub}</span></div>
       <div class="dest-val">${fmtK(v)}</div>
       <div class="dest-pct">${pct}% del total</div></div>`;
-  }).join('');
+  }).join('') || '<p class="foot" style="grid-column:1/-1;margin:0">Sin cobros en este periodo.</p>';
 
   const buckets=bucketize(set,from,to);
   document.getElementById('chartSub').textContent = `${fmt$(total)} · ${periodLabel()}`;
