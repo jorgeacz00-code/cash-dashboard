@@ -10,62 +10,54 @@
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo">$</div>
-        <div>
-          <h1>Cash Dashboard</h1>
-          <p class="sub">Cash collected — todas tus empresas en un sitio</p>
-        </div>
-      </div>
-      <div class="topbar-actions">
-        <button id="btnEdit" class="btn ghost">✎ Editar datos</button>
-      </div>
-    </header>
+    <!-- navbar -->
+    <nav class="nav">
+      <button id="btnMenu" class="icon-btn" aria-label="Menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <span class="nav-title">Operator Hack</span>
+      <select id="yearPick" class="year-pick" aria-label="Año"></select>
+    </nav>
 
-    <!-- filtros de empresa -->
-    <div class="company-tabs" id="companyTabs">
-      <button data-co="all" class="co-tab active">Todas</button>
-      <button data-co="estonia" class="co-tab">🇪🇪 Estonia</button>
-      <button data-co="usa" class="co-tab">🇺🇸 EE. UU.</button>
-      <button data-co="paraguay" class="co-tab">🇵🇾 Paraguay</button>
-    </div>
-
-    <!-- filtros de periodo -->
-    <div class="filters">
-      <div class="period-pills" id="periodPills">
-        <button data-p="today" class="pill">Hoy</button>
-        <button data-p="yesterday" class="pill">Ayer</button>
-        <button data-p="week" class="pill">Esta semana</button>
-        <button data-p="month" class="pill">Este mes</button>
-        <button data-p="30d" class="pill active">Últimos 30 días</button>
-      </div>
-      <div class="range">
-        <label>Desde <input type="date" id="from" /></label>
-        <label>Hasta <input type="date" id="to" /></label>
-        <button id="applyRange" class="btn small">Aplicar</button>
-      </div>
-    </div>
-
-    <!-- KPIs -->
-    <section class="kpis">
-      <div class="card hero">
-        <div class="kpi-label">Cash collected <span id="rangeLabel" class="chip"></span></div>
-        <div class="kpi-value" id="heroValue">$0</div>
-        <div class="kpi-delta" id="heroDelta"></div>
-      </div>
-      <div class="card mini" data-co="estonia"><div class="mini-top"><span class="dot e"></span>Estonia</div><div class="mini-val" id="valEstonia">$0</div></div>
-      <div class="card mini" data-co="usa"><div class="mini-top"><span class="dot u"></span>EE. UU.</div><div class="mini-val" id="valUsa">$0</div></div>
-      <div class="card mini" data-co="paraguay"><div class="mini-top"><span class="dot p"></span>Paraguay</div><div class="mini-val" id="valParaguay">$0</div></div>
+    <!-- hero -->
+    <section class="hero">
+      <div class="big-title">Cash collected</div>
+      <div class="hero-sub" id="heroSub">—</div>
+      <div class="hero-value" id="heroValue">$0</div>
+      <div class="hero-delta" id="heroDelta"></div>
     </section>
+
+    <!-- filtro negocio -->
+    <div class="seg" id="negSeg">
+      <button data-neg="all" class="active">Todos</button>
+      <button data-neg="agencia">Agencia</button>
+      <button data-neg="consultoria">Consultoría</button>
+      <button data-neg="bicicletas">Bicicletas</button>
+    </div>
+
+    <!-- periodo -->
+    <div class="period-row">
+      <div class="seg" id="periodSeg">
+        <button data-p="today">Hoy</button>
+        <button data-p="week">Semana</button>
+        <button data-p="month">Mes</button>
+        <button data-p="year" class="active">Año</button>
+      </div>
+      <button id="btnRange" class="icon-btn range-toggle" aria-label="Rango de fechas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+      </button>
+    </div>
+    <div class="range" id="rangeBox">
+      <label>Desde <input type="date" id="from" /></label>
+      <label>Hasta <input type="date" id="to" /></label>
+      <button id="applyRange" class="btn">Aplicar</button>
+    </div>
 
     <!-- gráfica -->
     <section class="card chart-card">
       <div class="chart-head">
-        <div>
-          <div class="chart-title">Evolución</div>
-          <div class="chart-sub" id="chartSub">—</div>
-        </div>
+        <div class="chart-title">Evolución</div>
+        <div class="chart-sub" id="chartSub">—</div>
       </div>
       <div class="chart-wrap">
         <svg id="chart" preserveAspectRatio="none"></svg>
@@ -74,28 +66,48 @@
       <div class="x-axis" id="xAxis"></div>
     </section>
 
-    <p class="footnote">Los números son editables y se guardan en este navegador. Cuando conectes las APIs de los bancos, sustituirán estos datos de ejemplo.</p>
+    <!-- por negocio -->
+    <section class="card byneg" id="byNeg">
+      <div class="byneg-title">Por negocio</div>
+      <div class="stack" id="negStack"></div>
+      <div class="stack-legend" id="negLegend"></div>
+    </section>
+
+    <!-- recibido en -->
+    <div class="sec-head">Recibido en</div>
+    <section class="dest-grid" id="destGrid"></section>
+
+    <p class="foot">Los importes son editables (menú ▸ Editar datos) y se guardan en este navegador.<br/>Cuando conectes las APIs de los bancos sustituirán estos datos.</p>
   </div>
 
-  <!-- panel de edición -->
-  <div class="drawer-overlay hidden" id="overlay"></div>
-  <aside class="drawer hidden" id="drawer">
-    <div class="drawer-head">
-      <h2>Editar datos</h2>
-      <button id="closeDrawer" class="btn ghost small">✕</button>
-    </div>
-    <p class="drawer-sub">Importes en USD por día y empresa. Se guardan automáticamente.</p>
-    <div class="table-wrap">
-      <table id="dataTable">
-        <thead><tr><th>Fecha</th><th>🇪🇪 Estonia</th><th>🇺🇸 EE. UU.</th><th>🇵🇾 Paraguay</th><th></th></tr></thead>
-        <tbody id="dataBody"></tbody>
-      </table>
-    </div>
-    <div class="drawer-actions">
-      <button id="addRow" class="btn small">+ Añadir día</button>
-      <button id="resetData" class="btn ghost small">Restablecer ejemplo</button>
+  <!-- drawer menú izquierda -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer">
+    <h2>Menú</h2>
+    <div class="menu">
+      <button id="mEdit">Editar datos <span class="chev">›</span></button>
+      <button id="mReset" class="danger">Restablecer datos de ejemplo</button>
     </div>
   </aside>
+
+  <!-- modal editor -->
+  <div class="modal-scrim" id="editScrim">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Editar datos</h3>
+        <button id="editClose" class="btn plain">Hecho</button>
+      </div>
+      <div class="modal-body">
+        <table>
+          <thead><tr><th>Fecha</th><th>Negocio</th><th>Recibido en</th><th>Importe</th><th></th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button id="addRow" class="btn plain">+ Añadir pago</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
