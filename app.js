@@ -1,5 +1,5 @@
 // ===== Cash Dashboard — iOS · cash collected por negocio y destino =====
-const KEY = 'cashdash.data.v3';
+const KEY = 'cashdash.data.v4';
 const YEAR = 2026;
 
 const NEGOCIOS = [
@@ -39,36 +39,58 @@ const WEIGHTS = {
   consultoria:{ ou:0.71, llc:0.20, cripto:0.09 },
   bicicletas: { eas:0.80, ou:0.11, cripto:0.09 },
 };
-const MONTHLY = { agencia:190000, consultoria:20000, bicicletas:150000 }; // USD/mes (media; ±10% random)
-const BIKES_FROM = 8; // septiembre (0-index) — el negocio de productos arrancó en sep
+// --- Agencia: cash = 40% del facturado; cobro semanal lun–mié (martes fuerte)
+const BILLED_AGENCIA = 200000;                   // facturado/mes
+const COLLECT_AGENCIA = 0.40;                    // % que entra como cash (el resto va a clientes)
+const DOW_AGENCIA = { 1:0.15, 2:0.50, 3:0.35 };  // lun/mar/mié (getDay)
+// --- Bicicletas: cobramos el 100%; 197$/u, 600–800/mes; cobro mié–vie
+const BIKE_PRICE = 197;
+const BIKE_UNITS = [600, 800];                   // unidades/mes (random)
+const DOW_BIKES = { 3:0.30, 4:0.55, 5:0.15 };    // mié/jue/vie (getDay)
+const BIKES_FROM = 8;                            // septiembre (0-index)
+// --- Consultoría: mentorías de 10k; sin ventas ene–mar; julio pico (4); total 20 = 200k
+const CONSULT_TICKET = 10000;
+const CONSULT_PLAN = { 3:2, 4:3, 5:3, 6:4, 7:3, 8:2, 9:3 }; // mes(0-index):nº mentorías
 
-function splitRandom(total,n){
-  if(n<=1) return [total];
-  const cuts=[]; for(let i=0;i<n-1;i++) cuts.push(Math.random()); cuts.sort();
-  const parts=[]; let prev=0;
-  for(const c of cuts){ parts.push((c-prev)*total); prev=c; }
-  parts.push((1-prev)*total); return parts;
-}
+function firstWeekday(from,dow){ const d=new Date(from); return addDays(d,(dow-d.getDay()+7)%7); }
+function pickDest(w){ let r=Math.random(),acc=0; for(const [k,v] of Object.entries(w)){ acc+=v; if(r<=acc) return k; } return Object.keys(w)[0]; }
+
 function seed(){
   const out=[]; let id=1;
-  const today=new Date();
-  const lastMonth = today.getFullYear()===YEAR ? today.getMonth() : 11;
-  for(let m=0;m<=lastMonth;m++){
-    for(const neg of ['agencia','consultoria','bicicletas']){
-      if(neg==='bicicletas' && m<BIKES_FROM) continue;
-      const base = MONTHLY[neg]*(0.9+Math.random()*0.2);   // ±10% random
-      for(const [dest,frac] of Object.entries(WEIGHTS[neg])){
-        const nPay = 1+Math.floor(Math.random()*2);
-        for(const part of splitRandom(base*frac, nPay)){
-          const dim = new Date(YEAR,m+1,0).getDate();
-          let maxD = dim;
-          if(today.getFullYear()===YEAR && m===today.getMonth()) maxD=today.getDate();
-          const day = 1+Math.floor(Math.random()*maxD);
-          out.push({ id:id++, date:iso(new Date(YEAR,m,day)), negocio:neg, destino:dest, amount:Math.round(part/10)*10 });
-        }
-      }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const y=YEAR, y0=new Date(y,0,1);
+  const add=(d,neg,amt,w)=>{ if(d<y0||d>today||amt<=0) return; out.push({id:id++,date:iso(d),negocio:neg,destino:pickDest(w),amount:Math.round(amt/10)*10}); };
+
+  // Agencia — semanal, anclado en martes (dow 2)
+  const wkAgencia = BILLED_AGENCIA*COLLECT_AGENCIA*12/52;
+  for(let d=firstWeekday(y0,2); d<=today; d=addDays(d,7)){
+    const wk=wkAgencia*(0.9+Math.random()*0.2);
+    add(addDays(d,-1),'agencia',wk*DOW_AGENCIA[1],WEIGHTS.agencia); // lunes
+    add(d,            'agencia',wk*DOW_AGENCIA[2],WEIGHTS.agencia); // martes
+    add(addDays(d,1), 'agencia',wk*DOW_AGENCIA[3],WEIGHTS.agencia); // miércoles
+  }
+
+  // Bicicletas — semanal, anclado en jueves (dow 4), desde septiembre
+  for(let d=firstWeekday(new Date(y,BIKES_FROM,1),4); d<=today; d=addDays(d,7)){
+    const units=BIKE_UNITS[0]+Math.floor(Math.random()*(BIKE_UNITS[1]-BIKE_UNITS[0]+1));
+    const wk=units*12/52*BIKE_PRICE;
+    add(addDays(d,-1),'bicicletas',wk*DOW_BIKES[3],WEIGHTS.bicicletas); // miércoles
+    add(d,            'bicicletas',wk*DOW_BIKES[4],WEIGHTS.bicicletas); // jueves
+    add(addDays(d,1), 'bicicletas',wk*DOW_BIKES[5],WEIGHTS.bicicletas); // viernes
+  }
+
+  // Consultoría — mentorías de 10k en días sueltos (abr–oct)
+  for(const [m,n] of Object.entries(CONSULT_PLAN)){
+    const mi=Number(m);
+    for(let k=0;k<n;k++){
+      let maxD=new Date(y,mi+1,0).getDate();
+      if(y===today.getFullYear()&&mi===today.getMonth()) maxD=today.getDate();
+      let dt=new Date(y,mi,1+Math.floor(Math.random()*maxD));
+      if(dt.getDay()===0) dt=addDays(dt,1); else if(dt.getDay()===6) dt=addDays(dt,2);
+      add(dt,'consultoria',CONSULT_TICKET,WEIGHTS.consultoria);
     }
   }
+
   return out.sort((a,b)=>a.date.localeCompare(b.date));
 }
 function load(){ try{const r=JSON.parse(localStorage.getItem(KEY)); if(Array.isArray(r)&&r.length) return r;}catch(e){} const s=seed(); save(s); return s; }
